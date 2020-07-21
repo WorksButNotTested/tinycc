@@ -1558,6 +1558,32 @@ static inline void write32le(unsigned char *p, uint32_t x) {
 static inline void add32le(unsigned char *p, int32_t x) {
     write32le(p, read32le(p) + x);
 }
+static inline void or32le(unsigned char *p, int32_t x) {
+    write32le(p, read32le(p) | x);
+}
+static inline void xor32le(unsigned char *p, int32_t x) {
+    write32le(p, read32le(p) ^ x);
+}
+static inline void and32le(unsigned char *p, int32_t x) {
+    write32le(p, read32le(p) & x);
+}
+
+static inline uint32_t read32ne(unsigned char *p) {
+    return *((uint32_t *)p);
+}
+static inline void write32ne(unsigned char *p, uint32_t x) {
+    *(uint32_t *)p = x;
+}
+static inline void add32ne(unsigned char *p, int32_t x) {
+    *(uint32_t *)p += x;
+}
+static inline void or32ne(unsigned char *p, int32_t x) {
+    *(uint32_t *)p |= x;
+}
+static inline void and32ne(unsigned char *p, int32_t x) {
+    *(uint32_t *)p &= x;
+}
+
 static inline uint64_t read64le(unsigned char *p) {
   return read32le(p) | (uint64_t)read32le(p + 4) << 32;
 }
@@ -1566,6 +1592,11 @@ static inline void write64le(unsigned char *p, uint64_t x) {
 }
 static inline void add64le(unsigned char *p, int64_t x) {
     write64le(p, read64le(p) + x);
+}
+static inline uint32_t to_le(uint32_t x) {
+    uint32_t val = 0;
+    write32le((unsigned char *)&val, x);
+    return read32ne((unsigned char *)&val);
 }
 
 /* ------------ i386-gen.c ------------ */

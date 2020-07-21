@@ -358,7 +358,7 @@ uint32_t encbranch(int pos, int addr, int fail)
 int decbranch(int pos)
 {
   int x;
-  x=*(uint32_t *)(cur_text_section->data + pos);
+  x = read32le(cur_text_section->data + pos);
   x&=0x00ffffff;
   if(x&0x800000)
     x-=0x1000000;
@@ -368,16 +368,16 @@ int decbranch(int pos)
 /* output a symbol and patch all calls to it */
 void gsym_addr(int t, int a)
 {
-  uint32_t *x;
+  unsigned char *x;
   int lt;
   while(t) {
-    x=(uint32_t *)(cur_text_section->data + t);
+    x=cur_text_section->data + t;
     t=decbranch(lt=t);
     if(a==lt+4)
-      *x=0xE1A00000; // nop
+      write32le(x, 0xE1A00000); // nop
     else {
-      *x &= 0xff000000;
-      *x |= encbranch(lt,a,1);
+      and32le(x, 0xff000000);
+      or32le(x, encbranch(lt,a,1));
     }
   }
 }
@@ -600,7 +600,7 @@ void load(int r, SValue *sv)
         o(0xEA000000);
         if(fr & VT_SYM)
 	  greloc(cur_text_section, sv->sym, ind, R_ARM_ABS32);
-        o(sv->c.i);
+        o(to_le(sv->c.i));
       } else
         o(op);
       return;
@@ -611,7 +611,7 @@ void load(int r, SValue *sv)
 	o(0xEA000000);
 	if(fr & VT_SYM) // needed ?
 	  greloc(cur_text_section, sv->sym, ind, R_ARM_ABS32);
-	o(sv->c.i);
+	o(to_le(sv->c.i));
 	o(0xE08B0000|(intr(r)<<12)|intr(r));
       } else
 	o(op);
@@ -748,13 +748,13 @@ static void gcall_or_jmp(int is_jmp)
 				o(0xE28FE004); // add lr,pc,#4
 			o(0xE51FF004);   // ldr pc,[pc,#-4]
 			greloc(cur_text_section, vtop->sym, ind, R_ARM_ABS32);
-			o(vtop->c.i);
+			o(to_le(vtop->c.i));
 		}
 	}else{
 		if(!is_jmp)
 			o(0xE28FE004); // add lr,pc,#4
 		o(0xE51FF004);   // ldr pc,[pc,#-4]
-		o(vtop->c.i);
+		o(to_le(vtop->c.i));
 	}
   } else {
     /* otherwise, indirect call */
@@ -1395,15 +1395,15 @@ void gfunc_epilog(void)
   if(diff > 0) {
     x=stuff_const(0xE24BD000, diff); /* sub sp,fp,# */
     if(x)
-      *(uint32_t *)(cur_text_section->data + func_sub_sp_offset) = x;
+      write32le(cur_text_section->data + func_sub_sp_offset, x);
     else {
       int addr;
       addr=ind;
       o(0xE59FC004); /* ldr ip,[pc+4] */
       o(0xE04BD00C); /* sub sp,fp,ip  */
       o(0xE1A0F00E); /* mov pc,lr */
-      o(diff);
-      *(uint32_t *)(cur_text_section->data + func_sub_sp_offset) = 0xE1000000|encbranch(func_sub_sp_offset,addr,1);
+      o(to_le(diff));
+      write32le(cur_text_section->data + func_sub_sp_offset, 0xE1000000|encbranch(func_sub_sp_offset,addr,1));
     }
   }
 }
@@ -1449,16 +1449,16 @@ ST_FUNC int gjmp_cond(int op, int t)
 
 ST_FUNC int gjmp_append(int n, int t)
 {
-  uint32_t *x;
+  unsigned char *x;
   int p,lp;
   if(n) {
     p = n;
     do {
       p = decbranch(lp=p);
     } while(p);
-    x = (uint32_t *)(cur_text_section->data + lp);
-    *x &= 0xff000000;
-    *x |= encbranch(lp,t,1);
+    x = cur_text_section->data + lp;
+    and32le(x, 0xff000000);
+    or32le(x, encbranch(lp,t,1));
     t = n;
   }
   return t;
