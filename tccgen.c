@@ -1738,24 +1738,36 @@ static int reg_fret(int t)
     return REG_FRET;
 }
 
+ST_FUNC int is_little_endian()
+{
+    unsigned int test_int = 1;
+    unsigned char test_char = *((unsigned char *)&test_int);
+    if (test_int == test_char)
+        return 1;
+    else
+        return 0;
+}
+
 #if PTR_SIZE == 4
 /* expand 64bit on stack in two ints */
 ST_FUNC void lexpand(void)
 {
-    int u, v;
+    int u, v, d, s;
     u = vtop->type.t & (VT_DEFSIGN | VT_UNSIGNED);
     v = vtop->r & (VT_VALMASK | VT_LVAL);
+    d = is_little_endian() ? 0 : -1;
+    s = is_little_endian() ? -1 : 0;
     if (v == VT_CONST) {
         vdup();
-        vtop[0].c.i >>= 32;
+        vtop[d].c.i >>= 32;
     } else if (v == (VT_LVAL|VT_CONST) || v == (VT_LVAL|VT_LOCAL)) {
         vdup();
-        vtop[0].c.i += 4;
+        vtop[d].c.i += 4;
     } else {
         gv(RC_INT);
         vdup();
-        vtop[0].r = vtop[-1].r2;
-        vtop[0].r2 = vtop[-1].r2 = VT_CONST;
+        vtop[d].r = vtop[s].r2;
+        vtop[d].r2 = vtop[s].r2 = VT_CONST;
     }
     vtop[0].type.t = vtop[-1].type.t = VT_INT | u;
 }
@@ -1766,7 +1778,15 @@ ST_FUNC void lexpand(void)
 static void lbuild(int t)
 {
     gv2(RC_INT, RC_INT);
-    vtop[-1].r2 = vtop[0].r;
+    if (is_little_endian())
+    {
+        vtop[-1].r2 = vtop[0].r;
+    }
+    else
+    {
+        vtop[-1].r2 = vtop[-1].r;
+        vtop[-1].r = vtop[0].r;
+    }
     vtop[-1].type.t = t;
     vpop();
 }
